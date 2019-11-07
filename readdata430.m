@@ -2,9 +2,10 @@
 clear;
 
 %change each time
-patient_num = '477';
-experiment = '020';
-cd 477_020; %All .ncs files with data stored should be in this folder, empty files should be deleted
+patient_num = '1101-006_TMS';
+experiment = 'nofilter_100percent_output';
+path  = uigetdir([],'Select neuralynx data file folder')
+cd(path); %All .ncs files with data stored should be in this folder, empty files should be deleted
 
 namefile=dir('*.ncs'); % Get all .ncs files
 all_file_details = struct2cell(namefile);
@@ -17,8 +18,15 @@ channel_num = cellfun(@str2num,channel_name);
 
 % Get number of samples from first file in the folder
 filetoread=sorted_filenames{1};
+if ismac || isunix
+[Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+    Nlx2MatCSC_v3(filetoread,[1 1 1 1 1], 1, 1, [] );
+% [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+%     getRawCSCData(filetoread,1,10000);
+else
 [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
     Nlx2MatCSC(filetoread,[1 1 1 1 1], 1, 1, [] );
+end
 
 % Initialize data from single channel
 data=zeros(size(sorted_filenames,1),numel(Samples));
@@ -26,8 +34,15 @@ data=zeros(size(sorted_filenames,1),numel(Samples));
 for i=1:size(sorted_filenames,1)
     i
 filetoread=sorted_filenames{i};
+if ismac || isunix
+[Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+    Nlx2MatCSC_v3(filetoread,[1 1 1 1 1], 1, 1, [] );
+% [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+%     getRawCSCData(filetoread,1,10000);
+else
 [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
     Nlx2MatCSC(filetoread,[1 1 1 1 1], 1, 1, [] );
+end
 data(i,:)=reshape(Samples,1,size(Samples,1)*size(Samples,2));
 end
 cd .. % Return to original directory
@@ -64,14 +79,21 @@ print = strcat('Sample rate: ',num2str(Fs))
 load(strcat(patient_num,'_eeglab_event.mat'));
 EEG.event = export_event;
 eeglab redraw
-loc = extractfield(EEG.event,'latency');
-print= "Events loaded"
+loc = [EEG.event.latency];
+print= "Events loaded from input event latency file"
 %% Sanity Check on Events
 t = 0:1/Fs:length(EEG.data(1,:))/Fs-1/Fs; % Get Seconds
 figure
 plot(t,EEG.data(1,:))
+
+if verLessThan('matlab','9.5')
+for i=1:length(loc)
+vline(t(round(loc(i))));
+end
+else
 for i=1:length(loc)
 xline(t(round(loc(i))));
+end
 end
 %% Load Channel Locations (load from .xyz file)
 EEG=pop_chanedit(EEG);
@@ -97,10 +119,12 @@ print = "Missing channels removed"
 %% Epoch [-1 1]
 EEG = eeg_checkset( EEG );
 EEG = pop_epoch( EEG, {  }, [-1  1], 'newname', 'eeg_all_chan_removed epochs', 'epochinfo', 'yes');
+print = "Data epoched"
 %% Delete noisy channels (try using
 if strcmp(patient_num, '477')
     EEG = pop_select( EEG, 'nochannel',{'66','67'});
 end
+print = "Noisy channels removed"
 %% Save to noisetools
 x = permute(EEG.data,[2 1 3]);
 save(strcat('raw_data/',patient_num,'_',experiment,'_raw_data.mat'), 'x');

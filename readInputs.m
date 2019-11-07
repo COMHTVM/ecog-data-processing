@@ -6,9 +6,12 @@
 %% Import from Neuralynx Input Channels
 clear;
 %change each time
-patient_num = '477';
-cd 477_020/inputs; %All .ncs files with data stored should be in this folder, empty files should be deleted
-num_inputs = 2;
+patient_num = '1101-006_TMS';
+num_inputs = 1;
+
+% Select Input Folder
+path  = uigetdir([],'Select neuralynx input file folder')
+cd(path); %All .ncs files with data stored should be in this folder, empty files should be deleted
 
 namefile=dir('*.ncs'); % Get all .ncs files
 all_file_details = struct2cell(namefile);
@@ -21,22 +24,37 @@ channel_num = cellfun(@str2num,channel_name);
 
 % Get number of samples from first file in the folder
 filetoread=sorted_filenames{1};
+if ismac || isunix
+[Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+    Nlx2MatCSC_v3(filetoread,[1 1 1 1 1], 1, 1, [] );
+% [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+%     getRawCSCData(filetoread,1,10000);
+else
 [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
     Nlx2MatCSC(filetoread,[1 1 1 1 1], 1, 1, [] );
+end
 
 % Initialize data from single channel
-%data=zeros(size(sorted_filenames,1),numel(Samples));
 data=zeros(num_inputs,numel(Samples));
 
-for i=1:num_inputs %size(sorted_filenames,1)
+for i=1:num_inputs
     i
 filetoread=sorted_filenames{i};
+
+if ismac || isunix
+% [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+%     getRawCSCData(filetoread,1,10000);
+[Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
+    Nlx2MatCSC_v3(filetoread,[1 1 1 1 1], 1, 1, [] );
+else
 [Timestamps, ChannelNumbers, SampleFrequencies, NumberOfValidSamples, Samples, Header] = ...
     Nlx2MatCSC(filetoread,[1 1 1 1 1], 1, 1, [] );
+end
 data(i,:)=reshape(Samples,1,size(Samples,1)*size(Samples,2));
 end
+
+cd .. 
 cd .. % Return to original directory
-cd ..
 %% Load and save to EEGLAB
 eeglab
 Fs=SampleFrequencies(1);
@@ -50,9 +68,9 @@ eeglab redraw
 
 %% Detect TMS peaks
 detect_from_datapoint = 0; % Cut off peaks from pre-stimulus data
-peak_thres = 30000; % ADC saturates at 32768 or 2^15
-nstim = 150; % Number of expected total stimulations
-kchan = 2;
+peak_thres = 10000; % ADC saturates at 32768 or 2^15
+nstim = 19; % Number of expected total stimulations
+kchan = 1;
 npoints = length(EEG.data(kchan,:));
 
 [~,loc] = findpeaks(EEG.data(kchan,:),'MinPeakHeight',peak_thres); % Find TMS pulses from the first data channel
@@ -63,8 +81,14 @@ print = strcat(num2str(nstim)," Peaks found")
 t = 0:1/Fs:length(EEG.data(1,:))/Fs-1/Fs; % Get Seconds
 figure
 plot(t,EEG.data(kchan,:))
+if verLessThan('matlab','9.5')
+for i=1:length(loc)
+vline(t(round(loc(i))));
+end
+else
 for i=1:length(loc)
 xline(t(round(loc(i))));
+end
 end
 %% Load EEGLAB Events
 EEG.event='';
@@ -88,7 +112,11 @@ if Fs > 2000
     [ALLEEG EEG CURRENTSET] = pop_newset(ALLEEG, EEG, 1,'gui','off'); 
     eeglab redraw;
 end
+print = "Input event latencies resampled to 2000Hz"
 %% Export events
+cd(path);
+cd ..
+cd ..
 export_event = EEG.event;
 event_file_name = strcat(patient_num,'_eeglab_event.mat');
 save(event_file_name, 'export_event');
