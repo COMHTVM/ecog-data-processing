@@ -193,6 +193,12 @@ else
             for k=1:order
                 r(:,k)=lin.^k;
             end
+         case 'exp'
+            r=zeros(size(x,1),numel(order));
+            lin=linspace(-1,1,size(x,1));
+            for k=1:order
+                r(:,k)=exp(-lin);
+            end
         case 'sinusoids'
             r=zeros(size(x,1),numel(order)*2);
             lin=linspace(-1,1,size(x,1));

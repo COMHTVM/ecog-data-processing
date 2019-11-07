@@ -1,4 +1,4 @@
-function varargout=nt_spect_plot(x,max_freq,varargin)
+function varargout=nt_spect_plot(x,varargin)
 %nt_spect_plot - plot power spectrum
 %
 %  The power spectral densities of all columns (pages, etc.) are calculated
@@ -25,7 +25,7 @@ pxx=pxx/ncols;
 if nargout == 0;
     plot(f,abs(pxx).^0.5);
     set(gca,'yscale','log');
-    xlim([f(1) max_freq]);
+    xlim([f(1) f(end)]);
     xlabel('Hz'); ylabel('Hz^{-0.5}', 'interpreter', 'tex');
     varargout={};
 else

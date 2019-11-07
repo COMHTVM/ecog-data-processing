@@ -15,9 +15,9 @@ if size(x,2)>1;
     error('x should be column vector'); 
 end
 
-ORDER=5; % order of polynomial trend
+ORDER=10; % order of polynomial trend
 NSAMPLES=100; % number of samples over which to estimate impulse response
-EXTRA=20; % samples before stimulus to anchor trend
+EXTRA=50; % samples before stimulus to anchor trend
 NNUM=8;NDEN=8; % number of filter coeffs
 THRESH=3; % threshold for robust detrending
 
